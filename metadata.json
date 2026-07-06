@@ -1,0 +1,6 @@
+{
+  "name": "Live Chat Tanpa Login",
+  "description": "Aplikasi live chat real-time tanpa login dengan panel admin untuk memantau pesan masuk.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
