@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getMessages, saveMessage, deleteMessage, clearAllMessages } from '../../../lib/chatStore';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const messages = getMessages();

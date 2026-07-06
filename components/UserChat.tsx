@@ -161,6 +161,36 @@ export default function UserChat() {
     return colors[index];
   };
 
+  // Helper to get random bubble backgrounds for other users (warna warni)
+  const getBubbleStyle = (senderName: string, isMe: boolean, isSystemAdmin: boolean) => {
+    if (isSystemAdmin) {
+      return 'bg-blue-50 text-slate-800 rounded-tl-none border border-blue-100/50 shadow-xs';
+    }
+    if (isMe) {
+      return 'bg-blue-600 text-white rounded-tr-none shadow-md shadow-blue-100';
+    }
+
+    // Other users: "warna warni" soft and aesthetic pastel styles
+    const bubbleColors = [
+      'bg-indigo-50 text-indigo-950 border border-indigo-100 rounded-tl-none',
+      'bg-purple-50 text-purple-950 border border-purple-100 rounded-tl-none',
+      'bg-rose-50 text-rose-950 border border-rose-100 rounded-tl-none',
+      'bg-emerald-50 text-emerald-950 border border-emerald-100 rounded-tl-none',
+      'bg-amber-50 text-amber-950 border border-amber-100 rounded-tl-none',
+      'bg-orange-50 text-orange-950 border border-orange-100 rounded-tl-none',
+      'bg-pink-50 text-pink-950 border border-pink-100 rounded-tl-none',
+      'bg-teal-50 text-teal-950 border border-teal-100 rounded-tl-none',
+      'bg-cyan-50 text-cyan-950 border border-cyan-100 rounded-tl-none',
+    ];
+
+    let hash = 0;
+    for (let i = 0; i < senderName.length; i++) {
+      hash = senderName.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const index = Math.abs(hash) % bubbleColors.length;
+    return bubbleColors[index];
+  };
+
   // Format time beautifully (e.g., 14:32)
   const formatTime = (isoString: string) => {
     try {
@@ -240,6 +270,7 @@ export default function UserChat() {
             <AnimatePresence initial={false}>
               {messages.map((msg) => {
                 const isSystemAdmin = !!msg.isAdmin;
+                const isMe = !isSystemAdmin && msg.name.trim().toLowerCase() === (name.trim() || 'Anonim').toLowerCase();
                 return (
                   <motion.div
                     key={msg.id}
@@ -247,7 +278,7 @@ export default function UserChat() {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
                     transition={{ type: 'spring', stiffness: 350, damping: 30 }}
-                    className={`flex items-start space-x-3 max-w-[85%] ${isSystemAdmin ? 'mr-auto' : 'ml-auto flex-row-reverse space-x-reverse'}`}
+                    className={`flex items-start space-x-3 max-w-[85%] ${isMe ? 'ml-auto flex-row-reverse space-x-reverse' : 'mr-auto flex-row'}`}
                   >
                     {/* Avatar */}
                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold shadow-sm flex-shrink-0 ${getAvatarColor(msg.name, isSystemAdmin)}`}>
@@ -257,7 +288,7 @@ export default function UserChat() {
                     {/* Bubble Content */}
                     <div className="flex flex-col space-y-1">
                       {/* Name & Badge */}
-                      <div className={`flex items-center space-x-1.5 text-xs ${isSystemAdmin ? 'justify-start' : 'justify-end'}`}>
+                      <div className={`flex items-center space-x-1.5 text-xs ${isMe ? 'justify-end' : 'justify-start'}`}>
                         <span className="font-bold text-slate-700">{msg.name}</span>
                         {isSystemAdmin && (
                           <span className="px-1.5 py-0.5 text-[9px] font-bold text-white bg-blue-600 rounded tracking-wider uppercase">
@@ -267,16 +298,12 @@ export default function UserChat() {
                       </div>
 
                       {/* Bubble box */}
-                      <div className={`px-4 py-2.5 rounded-2xl shadow-sm text-sm break-words leading-relaxed ${
-                        isSystemAdmin 
-                          ? 'bg-blue-50 text-slate-800 rounded-tl-none border border-blue-100/50' 
-                          : 'bg-blue-600 text-white rounded-tr-none'
-                      }`}>
+                      <div className={`px-4 py-2.5 rounded-2xl shadow-sm text-sm break-words leading-relaxed ${getBubbleStyle(msg.name, isMe, isSystemAdmin)}`}>
                         <p>{msg.message}</p>
                       </div>
 
                       {/* Timestamp */}
-                      <span className={`text-[9px] text-slate-400 font-mono ${isSystemAdmin ? 'text-left' : 'text-right'}`}>
+                      <span className={`text-[9px] text-slate-400 font-mono ${isMe ? 'text-right' : 'text-left'}`}>
                         {formatTime(msg.timestamp)}
                       </span>
                     </div>
