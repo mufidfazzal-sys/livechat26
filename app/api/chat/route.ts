@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const messages = getMessages();
+    const messages = await getMessages();
     return NextResponse.json({ success: true, messages });
   } catch (error) {
     return NextResponse.json(
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Pesan tidak boleh kosong' }, { status: 400 });
     }
 
-    const saved = saveMessage(name || 'Anonim', message, !!isAdmin, avatar);
+    const saved = await saveMessage(name || 'Anonim', message, !!isAdmin, avatar);
     return NextResponse.json({ success: true, message: saved });
   } catch (error) {
     return NextResponse.json(
@@ -41,7 +41,7 @@ export async function DELETE(req: NextRequest) {
     const clearAll = url.searchParams.get('clearAll') === 'true';
 
     if (clearAll) {
-      clearAllMessages();
+      await clearAllMessages();
       return NextResponse.json({ success: true, message: 'Semua pesan berhasil dihapus' });
     }
 
@@ -49,7 +49,7 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'ID pesan diperlukan' }, { status: 400 });
     }
 
-    const deleted = deleteMessage(id);
+    const deleted = await deleteMessage(id);
     if (deleted) {
       return NextResponse.json({ success: true, message: 'Pesan berhasil dihapus' });
     } else {

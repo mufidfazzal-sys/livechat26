@@ -1,5 +1,5 @@
-import fs from 'fs';
-import path from 'path';
+import { ref, get, set } from 'firebase/database';
+import { db } from './firebaseServer';
 
 export interface AppSettings {
   portalName: string;
@@ -7,46 +7,50 @@ export interface AppSettings {
   portalLogo: string;
 }
 
-const SETTINGS_FILE_PATH = path.join(process.cwd(), 'app_settings.json');
-
 const DEFAULT_SETTINGS: AppSettings = {
   portalName: 'LiveConnect Portal',
   portalTagline: 'Bebas & Tanpa Login',
   portalLogo: 'https://upload.wikimedia.org/wikipedia/commons/b/ba/City_of_Surabaya_Logo.svg',
 };
 
-let cachedSettings: AppSettings = DEFAULT_SETTINGS;
-let isLoaded = false;
-
-export function getSettings(): AppSettings {
-  if (isLoaded) return cachedSettings;
+export async function getSettings(): Promise<AppSettings> {
   try {
-    if (fs.existsSync(SETTINGS_FILE_PATH)) {
-      const data = fs.readFileSync(SETTINGS_FILE_PATH, 'utf-8');
-      cachedSettings = { ...DEFAULT_SETTINGS, ...JSON.parse(data) };
+    const settingsRef = ref(db, 'settings/portal_config');
+    const snapshot = await get(settingsRef);
+    if (snapshot.exists()) {
+      const data = snapshot.val();
+      return {
+        portalName: data.portalName || DEFAULT_SETTINGS.portalName,
+        portalTagline: data.portalTagline || DEFAULT_SETTINGS.portalTagline,
+        portalLogo: data.portalLogo || DEFAULT_SETTINGS.portalLogo,
+      };
     } else {
-      cachedSettings = { ...DEFAULT_SETTINGS };
-      fs.writeFileSync(SETTINGS_FILE_PATH, JSON.stringify(cachedSettings, null, 2), 'utf-8');
+      await set(settingsRef, DEFAULT_SETTINGS);
+      return { ...DEFAULT_SETTINGS };
     }
-    isLoaded = true;
   } catch (error) {
-    console.error('Failed to load settings:', error);
-    cachedSettings = { ...DEFAULT_SETTINGS };
+    console.error('Failed to load settings from Realtime Database:', error);
+    return { ...DEFAULT_SETTINGS };
   }
-  return cachedSettings;
 }
 
-export function saveSettings(settings: Partial<AppSettings>): AppSettings {
-  const current = getSettings();
-  cachedSettings = {
-    ...current,
-    ...settings,
-  };
+export async function saveSettings(settings: Partial<AppSettings>): Promise<AppSettings> {
   try {
-    fs.writeFileSync(SETTINGS_FILE_PATH, JSON.stringify(cachedSettings, null, 2), 'utf-8');
-    isLoaded = true;
+    const current = await getSettings();
+    const updated = {
+      portalName: settings.portalName !== undefined ? settings.portalName : current.portalName,
+      portalTagline: settings.portalTagline !== undefined ? settings.portalTagline : current.portalTagline,
+      portalLogo: settings.portalLogo !== undefined ? settings.portalLogo : current.portalLogo,
+    };
+    const settingsRef = ref(db, 'settings/portal_config');
+    await set(settingsRef, updated);
+    return updated;
   } catch (error) {
-    console.error('Failed to save settings:', error);
+    console.error('Failed to save settings to Realtime Database:', error);
+    return {
+      portalName: settings.portalName || DEFAULT_SETTINGS.portalName,
+      portalTagline: settings.portalTagline || DEFAULT_SETTINGS.portalTagline,
+      portalLogo: settings.portalLogo || DEFAULT_SETTINGS.portalLogo,
+    };
   }
-  return cachedSettings;
 }

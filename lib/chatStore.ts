@@ -1,5 +1,5 @@
-import fs from 'fs';
-import path from 'path';
+import { ref, get, set, push, remove, query, orderByChild, limitToLast } from 'firebase/database';
+import { db } from './firebaseServer';
 
 export interface ChatMessage {
   id: string;
@@ -10,81 +10,82 @@ export interface ChatMessage {
   avatar?: string;
 }
 
-const FILE_PATH = path.join(process.cwd(), 'messages_chat.json');
-
-// In-memory cache for fast access
-let memoryCache: ChatMessage[] = [];
-let isInitialized = false;
-
-function initStore() {
-  if (isInitialized) return;
+export async function getMessages(): Promise<ChatMessage[]> {
   try {
-    if (fs.existsSync(FILE_PATH)) {
-      const data = fs.readFileSync(FILE_PATH, 'utf-8');
-      memoryCache = JSON.parse(data);
-    } else {
-      memoryCache = [];
-      fs.writeFileSync(FILE_PATH, JSON.stringify(memoryCache, null, 2), 'utf-8');
+    const messagesRef = ref(db, 'messages');
+    const q = query(messagesRef, orderByChild('timestamp'), limitToLast(200));
+    const snapshot = await get(q);
+    
+    const messages: ChatMessage[] = [];
+    if (snapshot.exists()) {
+      snapshot.forEach((childSnapshot) => {
+        const data = childSnapshot.val();
+        messages.push({
+          id: childSnapshot.key as string,
+          name: data.name || 'Anonymous',
+          message: data.message || '',
+          timestamp: data.timestamp || new Date().toISOString(),
+          isAdmin: !!data.isAdmin,
+          avatar: data.avatar || '',
+        });
+      });
     }
+    return messages;
   } catch (error) {
-    console.error('Failed to initialize chat store file, falling back to in-memory:', error);
-    memoryCache = [];
+    console.error('Failed to get messages from Realtime Database:', error);
+    return [];
   }
-  isInitialized = true;
 }
 
-export function getMessages(): ChatMessage[] {
-  initStore();
-  return memoryCache;
-}
-
-export function saveMessage(name: string, message: string, isAdmin = false, avatar?: string): ChatMessage {
-  initStore();
-  const newMessage: ChatMessage = {
-    id: Math.random().toString(36).substring(2, 15) + Date.now().toString(36),
-    name: name.trim() || 'Anonymous',
-    message: message.trim(),
-    timestamp: new Date().toISOString(),
-    isAdmin,
-    avatar,
-  };
-
-  memoryCache.push(newMessage);
-
-  // Keep last 200 messages to prevent infinite file growth
-  if (memoryCache.length > 200) {
-    memoryCache = memoryCache.slice(memoryCache.length - 200);
-  }
-
+export async function saveMessage(name: string, message: string, isAdmin = false, avatar?: string): Promise<ChatMessage> {
+  const timestamp = new Date().toISOString();
+  
   try {
-    fs.writeFileSync(FILE_PATH, JSON.stringify(memoryCache, null, 2), 'utf-8');
+    const messagesRef = ref(db, 'messages');
+    const newMsgRef = push(messagesRef);
+    const id = newMsgRef.key as string;
+    
+    const newMessage: ChatMessage = {
+      id,
+      name: name.trim() || 'Anonymous',
+      message: message.trim(),
+      timestamp,
+      isAdmin,
+      avatar: avatar || '',
+    };
+    
+    await set(newMsgRef, newMessage);
+    return newMessage;
   } catch (error) {
-    console.error('Failed to write message to file:', error);
+    console.error('Failed to save message to Realtime Database:', error);
+    const id = Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+    return {
+      id,
+      name: name.trim() || 'Anonymous',
+      message: message.trim(),
+      timestamp,
+      isAdmin,
+      avatar: avatar || '',
+    };
   }
-
-  return newMessage;
 }
 
-export function deleteMessage(id: string): boolean {
-  initStore();
-  const index = memoryCache.findIndex((m) => m.id === id);
-  if (index !== -1) {
-    memoryCache.splice(index, 1);
-    try {
-      fs.writeFileSync(FILE_PATH, JSON.stringify(memoryCache, null, 2), 'utf-8');
-      return true;
-    } catch (error) {
-      console.error('Failed to update file after deleting message:', error);
-    }
-  }
-  return false;
-}
-
-export function clearAllMessages(): void {
-  memoryCache = [];
+export async function deleteMessage(id: string): Promise<boolean> {
   try {
-    fs.writeFileSync(FILE_PATH, JSON.stringify(memoryCache, null, 2), 'utf-8');
+    const msgRef = ref(db, `messages/${id}`);
+    await remove(msgRef);
+    return true;
   } catch (error) {
-    console.error('Failed to clear file database:', error);
+    console.error('Failed to delete message from Realtime Database:', error);
+    return false;
+  }
+}
+
+export async function clearAllMessages(): Promise<void> {
+  try {
+    const messagesRef = ref(db, 'messages');
+    await remove(messagesRef);
+  } catch (error) {
+    console.error('Failed to clear all messages from Realtime Database:', error);
   }
 }
