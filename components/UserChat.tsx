@@ -48,6 +48,11 @@ export default function UserChat() {
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Dynamic portal configurations
+  const [portalName, setPortalName] = useState('LiveConnect Portal');
+  const [portalTagline, setPortalTagline] = useState('Bebas & Tanpa Login');
+  const [portalLogo, setPortalLogo] = useState('https://upload.wikimedia.org/wikipedia/commons/b/ba/City_of_Surabaya_Logo.svg');
   
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -59,6 +64,21 @@ export default function UserChat() {
       localStorage.setItem('chat_user_name', name);
     }
   }, [name]);
+
+  // Fetch settings function
+  const fetchSettings = async () => {
+    try {
+      const res = await fetch('/api/settings');
+      const data = await res.json();
+      if (data.success && data.settings) {
+        setPortalName(data.settings.portalName || 'LiveConnect Portal');
+        setPortalTagline(data.settings.portalTagline || 'Bebas & Tanpa Login');
+        setPortalLogo(data.settings.portalLogo || 'https://upload.wikimedia.org/wikipedia/commons/b/ba/City_of_Surabaya_Logo.svg');
+      }
+    } catch (err) {
+      console.error('Error fetching settings:', err);
+    }
+  };
 
   // Fetch messages function
   const fetchMessages = async (silent = false) => {
@@ -84,14 +104,16 @@ export default function UserChat() {
     }
   };
 
-  // Poll for new messages every 2 seconds
+  // Poll for new messages and settings every 2 seconds
   useEffect(() => {
     const t = setTimeout(() => {
       fetchMessages();
+      fetchSettings();
     }, 0);
     
     const interval = setInterval(() => {
       fetchMessages(true);
+      fetchSettings();
     }, 2000);
 
     return () => {
@@ -294,28 +316,41 @@ export default function UserChat() {
     reader.readAsDataURL(file);
   };
 
+  const renderPortalName = (fullName: string) => {
+    const parts = fullName.trim().split(' ');
+    if (parts.length > 1) {
+      const lastWord = parts.pop();
+      const firstPart = parts.join(' ');
+      return (
+        <>
+          {firstPart} <span className="text-blue-600">{lastWord}</span>
+        </>
+      );
+    }
+    return fullName;
+  };
+
   return (
     <div className="w-full max-w-2xl mx-auto flex flex-col h-[85vh] sm:h-[90vh] bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden" id="user-chat-container">
       {/* Chat Header */}
       <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shrink-0" id="chat-header">
         <div className="flex items-center space-x-3">
           <div className="w-9 h-9 bg-transparent rounded-lg flex items-center justify-center overflow-hidden relative">
-            <Image 
-              src="https://upload.wikimedia.org/wikipedia/commons/b/ba/City_of_Surabaya_Logo.svg" 
-              alt="Logo Surabaya" 
-              width={36}
-              height={36}
-              className="object-contain"
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img 
+              src={portalLogo} 
+              alt="Logo Portal" 
+              className="w-7 h-7 object-contain"
               referrerPolicy="no-referrer"
             />
           </div>
           <div>
             <h1 className="font-display font-bold text-lg text-slate-800 tracking-tight">
-              LiveConnect <span className="text-blue-600">Portal</span>
+              {renderPortalName(portalName)}
             </h1>
             <div className="flex items-center space-x-1.5 mt-0.5">
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-              <p className="text-xs text-slate-500 font-medium">Bebas & Tanpa Login</p>
+              <p className="text-xs text-slate-500 font-medium">{portalTagline}</p>
             </div>
           </div>
         </div>
