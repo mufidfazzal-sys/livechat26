@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Send, User, MessageCircle, Info, Sparkles } from 'lucide-react';
+import { Send, User, MessageCircle, Info, Sparkles, Upload, X, Check, Image as ImageIcon } from 'lucide-react';
 
 interface ChatMessage {
   id: string;
@@ -10,11 +10,39 @@ interface ChatMessage {
   message: string;
   timestamp: string;
   isAdmin?: boolean;
+  avatar?: string;
 }
+
+const TEMPLATE_AVATARS = [
+  { id: 't1', type: 'emoji', value: '🦊', label: 'Fox' },
+  { id: 't2', type: 'emoji', value: '🦁', label: 'Lion' },
+  { id: 't3', type: 'emoji', value: '🐼', label: 'Panda' },
+  { id: 't4', type: 'emoji', value: '🤖', label: 'Robot' },
+  { id: 't5', type: 'emoji', value: '👽', label: 'Alien' },
+  { id: 't6', type: 'emoji', value: '🧑‍🚀', label: 'Astronaut' },
+  { id: 't7', type: 'emoji', value: '🐱', label: 'Cat' },
+  { id: 't8', type: 'emoji', value: '🐶', label: 'Dog' },
+  { id: 't9', type: 'emoji', value: '🦄', label: 'Unicorn' },
+  { id: 't10', type: 'emoji', value: '🧙', label: 'Wizard' },
+  { id: 't11', type: 'emoji', value: '🐸', label: 'Frog' },
+  { id: 't12', type: 'emoji', value: '🐉', label: 'Dragon' },
+];
 
 export default function UserChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [name, setName] = useState('');
+  const [name, setName] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('chat_user_name') || '';
+    }
+    return '';
+  });
+  const [userAvatar, setUserAvatar] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('chat_user_avatar') || '';
+    }
+    return '';
+  });
+  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [messageText, setMessageText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,18 +52,12 @@ export default function UserChat() {
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const isFirstLoad = useRef(true);
 
-  // Load name from localStorage on mount
+  // Sync name to localStorage when it changes
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const savedName = localStorage.getItem('chat_user_name');
-      if (savedName) {
-        const t = setTimeout(() => {
-          setName(savedName);
-        }, 0);
-        return () => clearTimeout(t);
-      }
+      localStorage.setItem('chat_user_name', name);
     }
-  }, []);
+  }, [name]);
 
   // Fetch messages function
   const fetchMessages = async (silent = false) => {
@@ -79,16 +101,9 @@ export default function UserChat() {
 
   // Auto scroll to bottom when messages update
   useEffect(() => {
-    const container = chatContainerRef.current;
-    if (container) {
-      // If it's first load or user is already near the bottom, scroll to bottom
-      const isNearBottom = 
-        container.scrollHeight - container.scrollTop - container.clientHeight < 150;
-      
-      if (isFirstLoad.current || isNearBottom) {
-        chatEndRef.current?.scrollIntoView({ behavior: isFirstLoad.current ? 'auto' : 'smooth' });
-        isFirstLoad.current = false;
-      }
+    if (messages.length > 0) {
+      chatEndRef.current?.scrollIntoView({ behavior: isFirstLoad.current ? 'auto' : 'smooth' });
+      isFirstLoad.current = false;
     }
   }, [messages]);
 
@@ -114,6 +129,7 @@ export default function UserChat() {
         body: JSON.stringify({
           name: displayName,
           message: messageText,
+          avatar: userAvatar || undefined,
         }),
       });
 
@@ -201,6 +217,82 @@ export default function UserChat() {
     }
   };
 
+  // Helper to render user avatar
+  const renderAvatar = (msg: ChatMessage, isSystemAdmin = false) => {
+    if (isSystemAdmin) {
+      return (
+        <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xs font-bold shadow-sm flex-shrink-0 ring-2 ring-blue-300 ring-offset-1">
+          AD
+        </div>
+      );
+    }
+
+    if (msg.avatar) {
+      if (msg.avatar.startsWith('data:image/') || msg.avatar.startsWith('http')) {
+        return (
+          <div className="w-9 h-9 rounded-xl overflow-hidden shadow-sm flex-shrink-0 border border-slate-200">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={msg.avatar} alt={msg.name} className="w-full h-full object-cover" />
+          </div>
+        );
+      }
+      return (
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg shadow-sm flex-shrink-0 bg-slate-50 border border-slate-200">
+          {msg.avatar}
+        </div>
+      );
+    }
+
+    // Fallback to name initials
+    const initials = msg.name ? msg.name.trim().substring(0, 2).toUpperCase() : 'AN';
+    return (
+      <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold shadow-sm flex-shrink-0 ${getAvatarColor(msg.name, false)}`}>
+        {initials}
+      </div>
+    );
+  };
+
+  // Helper to compress uploaded file from device
+  const compressAndSetAvatar = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 96;
+        const MAX_HEIGHT = 96;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          setUserAvatar(dataUrl);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('chat_user_avatar', dataUrl);
+          }
+        }
+      };
+      img.src = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
   return (
     <div className="w-full max-w-2xl mx-auto flex flex-col h-[85vh] sm:h-[90vh] bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden" id="user-chat-container">
       {/* Chat Header */}
@@ -281,9 +373,7 @@ export default function UserChat() {
                     className={`flex items-start space-x-3 max-w-[85%] ${isMe ? 'ml-auto flex-row-reverse space-x-reverse' : 'mr-auto flex-row'}`}
                   >
                     {/* Avatar */}
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold shadow-sm flex-shrink-0 ${getAvatarColor(msg.name, isSystemAdmin)}`}>
-                      {isSystemAdmin ? 'AD' : msg.name.substring(0, 2).toUpperCase()}
-                    </div>
+                    {renderAvatar(msg, isSystemAdmin)}
 
                     {/* Bubble Content */}
                     <div className="flex flex-col space-y-1">
@@ -319,20 +409,44 @@ export default function UserChat() {
       {/* Send Message Form */}
       <form onSubmit={handleSend} className="p-4 bg-white border-t border-slate-200 space-y-3" id="message-form">
         <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-          {/* Name Input */}
-          <div className="relative flex-shrink-0 sm:w-44">
-            <span className="absolute left-3 top-2.5 text-slate-400">
-              <User className="w-4 h-4" />
-            </span>
-            <input
-              type="text"
-              placeholder="Nama Anda..."
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              maxLength={20}
-              className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition"
-              id="name-input"
-            />
+          {/* Avatar & Name Input Wrapper */}
+          <div className="flex items-center space-x-2 flex-shrink-0">
+            {/* Custom Avatar Selector Button */}
+            <button
+              type="button"
+              onClick={() => setIsAvatarModalOpen(true)}
+              className="w-9 h-9 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100/80 active:scale-95 transition flex items-center justify-center cursor-pointer shadow-sm relative group"
+              title="Ganti Avatar"
+              id="avatar-picker-trigger"
+            >
+              {userAvatar ? (
+                userAvatar.startsWith('data:image/') || userAvatar.startsWith('http') ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={userAvatar} alt="My Avatar" className="w-full h-full object-cover rounded-xl" />
+                ) : (
+                  <span className="text-xl leading-none">{userAvatar}</span>
+                )
+              ) : (
+                <User className="w-4 h-4 text-slate-500 group-hover:text-slate-700 transition" />
+              )}
+              {/* Plus indicator */}
+              <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-blue-600 border border-white text-white text-[8px] font-black flex items-center justify-center shadow-sm">
+                +
+              </div>
+            </button>
+
+            {/* Name Input */}
+            <div className="relative w-36 sm:w-40">
+              <input
+                type="text"
+                placeholder="Nama Anda..."
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                maxLength={20}
+                className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition font-medium text-slate-700"
+                id="name-input"
+              />
+            </div>
           </div>
 
           {/* Message Text Input */}
@@ -374,6 +488,150 @@ export default function UserChat() {
           <span>{messageText.length}/500</span>
         </div>
       </form>
+
+      {/* Avatar Selection Modal */}
+      <AnimatePresence>
+        {isAvatarModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-xs bg-slate-900/50"
+            id="avatar-modal-overlay"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              transition={{ type: 'spring', duration: 0.3 }}
+              className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-150 flex flex-col"
+              id="avatar-modal-content"
+            >
+              {/* Modal Header */}
+              <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div className="flex items-center space-x-2">
+                  <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-slate-800">Ubah Avatar Anda</h2>
+                    <p className="text-[10px] text-slate-400">Pilih dari templat atau unggah foto</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsAvatarModalOpen(false)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-5 space-y-5 overflow-y-auto max-h-[70vh]">
+                {/* Active Avatar Preview */}
+                <div className="flex items-center space-x-4 p-3 bg-slate-50 rounded-xl border border-slate-150">
+                  <div className="w-14 h-14 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center justify-center overflow-hidden flex-shrink-0">
+                    {userAvatar ? (
+                      userAvatar.startsWith('data:image/') || userAvatar.startsWith('http') ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={userAvatar} alt="Current Preview" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-3xl leading-none">{userAvatar}</span>
+                      )
+                    ) : (
+                      <span className="text-xs font-bold text-slate-400">Default</span>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-bold text-slate-700">Preview Avatar</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Ini adalah tampilan avatar Anda saat mengirim pesan.</p>
+                    {userAvatar && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUserAvatar('');
+                          if (typeof window !== 'undefined') {
+                            localStorage.removeItem('chat_user_avatar');
+                          }
+                        }}
+                        className="text-[10px] font-bold text-rose-600 hover:text-rose-700 underline mt-1.5 block cursor-pointer"
+                      >
+                        Hapus Avatar & Gunakan Inisial
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Templates Section */}
+                <div className="space-y-2">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Pilih dari Templat</p>
+                  <div className="grid grid-cols-4 gap-3">
+                    {TEMPLATE_AVATARS.map((tpl) => {
+                      const isSelected = userAvatar === tpl.value;
+
+                      return (
+                        <button
+                          key={tpl.id}
+                          type="button"
+                          onClick={() => {
+                            setUserAvatar(tpl.value);
+                            if (typeof window !== 'undefined') {
+                              localStorage.setItem('chat_user_avatar', tpl.value);
+                            }
+                          }}
+                          className={`h-12 rounded-xl flex items-center justify-center text-2xl transition cursor-pointer relative ${
+                            isSelected
+                              ? 'bg-blue-50 border-2 border-blue-500 shadow-sm'
+                              : 'bg-slate-50 hover:bg-slate-100 border border-slate-200'
+                          }`}
+                        >
+                          <span>{tpl.value}</span>
+                          {isSelected && (
+                            <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-sm">
+                              <Check className="w-2.5 h-2.5 stroke-[3]" />
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* File Upload Section */}
+                <div className="space-y-2">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Unggah dari Device</p>
+                  <label className="border-2 border-dashed border-slate-200 hover:border-blue-400 rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-pointer transition hover:bg-slate-50/50 group">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) compressAndSetAvatar(file);
+                      }}
+                    />
+                    <Upload className="w-5 h-5 text-slate-400 group-hover:text-blue-500 transition mb-1.5" />
+                    <span className="text-xs font-bold text-slate-700">Pilih file gambar</span>
+                    <span className="text-[10px] text-slate-400 mt-0.5">JPG, PNG atau WebP (akan dikompres otomatis)</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-100 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsAvatarModalOpen(false)}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-100 transition cursor-pointer"
+                >
+                  Selesai
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

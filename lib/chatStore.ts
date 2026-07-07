@@ -7,6 +7,7 @@ export interface ChatMessage {
   message: string;
   timestamp: string;
   isAdmin?: boolean;
+  avatar?: string;
 }
 
 const FILE_PATH = path.join(process.cwd(), 'messages_chat.json');
@@ -37,7 +38,7 @@ export function getMessages(): ChatMessage[] {
   return memoryCache;
 }
 
-export function saveMessage(name: string, message: string, isAdmin = false): ChatMessage {
+export function saveMessage(name: string, message: string, isAdmin = false, avatar?: string): ChatMessage {
   initStore();
   const newMessage: ChatMessage = {
     id: Math.random().toString(36).substring(2, 15) + Date.now().toString(36),
@@ -45,6 +46,7 @@ export function saveMessage(name: string, message: string, isAdmin = false): Cha
     message: message.trim(),
     timestamp: new Date().toISOString(),
     isAdmin,
+    avatar,
   };
 
   memoryCache.push(newMessage);

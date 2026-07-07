@@ -1,3 +1,4 @@
+// Next.js config for LiveConnect App
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {

@@ -18,13 +18,13 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, message, isAdmin } = body;
+    const { name, message, isAdmin, avatar } = body;
 
     if (!message || message.trim() === '') {
       return NextResponse.json({ success: false, error: 'Pesan tidak boleh kosong' }, { status: 400 });
     }
 
-    const saved = saveMessage(name || 'Anonim', message, !!isAdmin);
+    const saved = saveMessage(name || 'Anonim', message, !!isAdmin, avatar);
     return NextResponse.json({ success: true, message: saved });
   } catch (error) {
     return NextResponse.json(
