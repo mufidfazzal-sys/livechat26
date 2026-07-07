@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Trash2, AlertTriangle, ShieldCheck, Search, Send, ArrowLeft, RefreshCw, Layers } from 'lucide-react';
+import { Trash2, AlertTriangle, ShieldCheck, Search, Send, ArrowLeft, RefreshCw, Layers, Lock } from 'lucide-react';
 
 interface ChatMessage {
   id: string;
@@ -13,6 +13,28 @@ interface ChatMessage {
 }
 
 export default function AdminDashboard() {
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('admin_authenticated') === 'true';
+    }
+    return false;
+  });
+  const [passwordInput, setPasswordInput] = useState('');
+  const [loginError, setLoginError] = useState('');
+
+  const handleLoginSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passwordInput === 'surabaya2026') {
+      setIsAuthenticated(true);
+      setLoginError('');
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('admin_authenticated', 'true');
+      }
+    } else {
+      setLoginError('Password salah, silakan coba lagi.');
+    }
+  };
+
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [replyText, setReplyText] = useState('');
@@ -156,6 +178,64 @@ export default function AdminDashboard() {
     }
   };
 
+  if (!isAuthenticated) {
+    return (
+      <div className="w-full max-w-md mx-auto flex flex-col justify-center items-center py-12 px-4" id="admin-login-container">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden"
+        >
+          {/* Header */}
+          <div className="p-6 bg-slate-50 border-b border-slate-100 flex flex-col items-center text-center">
+            <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 mb-3 shadow-sm ring-4 ring-blue-500/10">
+              <Lock className="w-5 h-5" />
+            </div>
+            <h2 className="text-lg font-bold text-slate-800">Login Panel Admin</h2>
+            <p className="text-xs text-slate-400 mt-1">Gunakan password administrator untuk melanjutkan</p>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleLoginSubmit} className="p-6 space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                Password Admin
+              </label>
+              <input
+                type="password"
+                placeholder="Masukkan password..."
+                value={passwordInput}
+                onChange={(e) => setPasswordInput(e.target.value)}
+                className="w-full px-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition text-slate-800 font-medium"
+                id="admin-password-input"
+                autoFocus
+              />
+            </div>
+
+            {loginError && (
+              <motion.div
+                initial={{ opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-3 bg-rose-50 text-rose-600 text-xs font-semibold rounded-lg border border-rose-100 flex items-center gap-1.5"
+              >
+                <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                <span>{loginError}</span>
+              </motion.div>
+            )}
+
+            <button
+              type="submit"
+              className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold text-sm rounded-xl shadow-lg shadow-blue-100 transition cursor-pointer flex items-center justify-center space-x-2"
+              id="admin-login-submit"
+            >
+              <span>Masuk Panel</span>
+            </button>
+          </form>
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full max-w-4xl mx-auto flex flex-col h-[85vh] sm:h-[90vh] bg-white rounded-2xl shadow-sm border border-slate-200 text-slate-800 overflow-hidden" id="admin-dashboard-container">
       {/* Header */}
@@ -178,15 +258,6 @@ export default function AdminDashboard() {
         </div>
         
         <div className="flex items-center space-x-2 self-start sm:self-center">
-          <button
-            onClick={() => { window.location.hash = ''; }}
-            className="px-3 py-1.5 text-xs font-semibold bg-white hover:bg-slate-50 active:scale-95 transition rounded-xl flex items-center space-x-1.5 border border-slate-200 text-slate-700 cursor-pointer shadow-sm"
-            id="back-to-chat-btn"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Ke Obrolan</span>
-          </button>
-          
           <button
             onClick={() => fetchMessages()}
             className="p-1.5 text-xs bg-white hover:bg-slate-50 rounded-xl border border-slate-200 text-slate-600 active:scale-95 transition cursor-pointer shadow-sm"

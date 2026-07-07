@@ -88,38 +88,13 @@ export default function Home() {
         </AnimatePresence>
       </div>
 
-      {/* Humble Footer with toggle instructions & credentials */}
-      <footer className="w-full max-w-2xl mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400 border-t border-slate-200/60 pt-4" id="app-footer">
+      {/* Humble Footer with credentials */}
+      <footer className="w-full max-w-2xl mt-6 flex items-center justify-center gap-3 text-xs text-slate-400 border-t border-slate-200/60 pt-4" id="app-footer">
         <div className="flex items-center space-x-1.5">
           <MessageSquare className="w-4 h-4 text-blue-600" />
           <span className="font-semibold text-slate-650">LiveConnect Portal</span>
           <span className="text-slate-300">|</span>
           <span className="text-slate-400">Tanpa Login & Real-time</span>
-        </div>
-        
-        {/* Toggle Instruction Box for testability */}
-        <div className="flex items-center space-x-2">
-          {view === 'chat' ? (
-            <button
-              onClick={navigateToAdmin}
-              className="px-3 py-1 bg-white hover:bg-slate-100 border border-slate-200 hover:border-slate-300 text-slate-500 hover:text-slate-700 font-bold rounded-lg shadow-sm transition flex items-center space-x-1.5 cursor-pointer"
-              id="goto-admin-shortcut"
-            >
-              <Shield className="w-3.5 h-3.5 text-blue-600" />
-              <span>Panel Admin (/#/admin)</span>
-              <ArrowRight className="w-3 h-3" />
-            </button>
-          ) : (
-            <button
-              onClick={navigateToChat}
-              className="px-3 py-1 bg-white hover:bg-slate-100 border border-slate-200 hover:border-slate-300 text-slate-500 hover:text-slate-700 font-bold rounded-lg shadow-sm transition flex items-center space-x-1.5 cursor-pointer"
-              id="goto-chat-shortcut"
-            >
-              <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
-              <span>Kembali ke Chat Publik</span>
-              <ArrowRight className="w-3 h-3" />
-            </button>
-          )}
         </div>
       </footer>
     </main>
