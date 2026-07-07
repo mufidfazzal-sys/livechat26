@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import Image from 'next/image';
 import { Send, User, MessageCircle, Info, Sparkles, Upload, X, Check, Image as ImageIcon } from 'lucide-react';
 
 interface ChatMessage {
@@ -256,7 +257,7 @@ export default function UserChat() {
   const compressAndSetAvatar = (file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
-      const img = new Image();
+      const img = new window.Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
         const MAX_WIDTH = 96;
@@ -298,10 +299,15 @@ export default function UserChat() {
       {/* Chat Header */}
       <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shrink-0" id="chat-header">
         <div className="flex items-center space-x-3">
-          <div className="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center shadow-sm">
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
-            </svg>
+          <div className="w-9 h-9 bg-transparent rounded-lg flex items-center justify-center overflow-hidden relative">
+            <Image 
+              src="https://upload.wikimedia.org/wikipedia/commons/b/ba/City_of_Surabaya_Logo.svg" 
+              alt="Logo Surabaya" 
+              width={36}
+              height={36}
+              className="object-contain"
+              referrerPolicy="no-referrer"
+            />
           </div>
           <div>
             <h1 className="font-display font-bold text-lg text-slate-800 tracking-tight">
